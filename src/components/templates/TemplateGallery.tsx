@@ -7,10 +7,10 @@ interface Props {
 }
 
 const TEMPLATE_META = [
-  { key: 'resume',          name: '기본 이력서',   type: '이력서',     desc: '블루톤 스탠다드',    color: '#2563EB' },
-  { key: 'resume-minimal',  name: '미니멀 이력서', type: '이력서',     desc: '심플 그린 스타일',   color: '#059669' },
-  { key: 'resume-dark',     name: '다크 이력서',   type: '이력서',     desc: '세련된 다크 테마',   color: '#818CF8' },
-  { key: 'portfolio',       name: '포트폴리오',    type: '포트폴리오', desc: '작업물 중심 레이아웃', color: '#7C3AED' },
+  { key: 'resume', name: '기본 이력서', type: '이력서', desc: '가장 무난한 기본 구성', color: '#2563EB' },
+  { key: 'resume-minimal', name: '미니멀 이력서', type: '이력서', desc: '간결하고 여백이 넓은 구성', color: '#059669' },
+  { key: 'resume-dark', name: '다크 이력서', type: '이력서', desc: '강한 대비의 다크 테마', color: '#818CF8' },
+  { key: 'portfolio', name: '포트폴리오', type: '웹', desc: '프로젝트 중심의 웹 포트폴리오', color: '#7C3AED' },
 ]
 
 export function TemplateGallery({ onSelect, onClose }: Props) {
@@ -20,20 +20,26 @@ export function TemplateGallery({ onSelect, onClose }: Props) {
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
           <div>
             <h2 className="text-lg font-bold text-gray-900">템플릿 선택</h2>
-            <p className="text-sm text-gray-400 mt-0.5">원하는 템플릿으로 시작하세요</p>
+            <p className="text-sm text-gray-400 mt-0.5">원하는 시작점을 고르면 새 문서로 열립니다.</p>
           </div>
-          <button onClick={onClose} className="w-8 h-8 flex items-center justify-center rounded-xl text-gray-400 hover:bg-gray-100 transition-colors">
+          <button
+            onClick={onClose}
+            title="닫기"
+            className="w-8 h-8 flex items-center justify-center rounded-xl text-gray-400 hover:bg-gray-100 transition-colors"
+          >
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="w-4 h-4">
-              <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+              <line x1="18" y1="6" x2="6" y2="18" />
+              <line x1="6" y1="6" x2="18" y2="18" />
             </svg>
           </button>
         </div>
 
         <div className="overflow-y-auto p-6">
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {TEMPLATE_META.map(meta => {
               const design = templates[meta.key]
               if (!design) return null
+
               return (
                 <button
                   key={meta.key}
@@ -42,18 +48,16 @@ export function TemplateGallery({ onSelect, onClose }: Props) {
                 >
                   <div
                     className="w-full h-28 rounded-lg mb-3 p-3 flex flex-col gap-2 overflow-hidden"
-                    style={{ backgroundColor: meta.color + '10', border: `1px solid ${meta.color}25` }}
+                    style={{ backgroundColor: `${meta.color}10`, border: `1px solid ${meta.color}25` }}
                   >
                     <div className="h-3 rounded-full" style={{ backgroundColor: meta.color, width: '55%' }} />
                     <div className="h-2 rounded-full bg-gray-200" style={{ width: '80%' }} />
                     <div className="h-2 rounded-full bg-gray-200" style={{ width: '65%' }} />
                     <div className="flex gap-1.5 mt-auto">
-                      {[48, 62, 40].map((w, i) => (
-                        <div key={i} className="h-5 rounded" style={{ backgroundColor: meta.color + '28', width: w }} />
+                      {[48, 62, 40].map((width, index) => (
+                        <div key={index} className="h-5 rounded" style={{ backgroundColor: `${meta.color}28`, width }} />
                       ))}
                     </div>
-                    <div className="h-2 rounded-full bg-gray-200" style={{ width: '70%' }} />
-                    <div className="h-2 rounded-full bg-gray-200" style={{ width: '50%' }} />
                   </div>
 
                   <div className="flex items-start justify-between gap-2">
@@ -63,7 +67,7 @@ export function TemplateGallery({ onSelect, onClose }: Props) {
                     </div>
                     <span
                       className="flex-shrink-0 text-xs px-2 py-0.5 rounded-full font-medium"
-                      style={{ backgroundColor: meta.color + '15', color: meta.color }}
+                      style={{ backgroundColor: `${meta.color}15`, color: meta.color }}
                     >
                       {meta.type}
                     </span>

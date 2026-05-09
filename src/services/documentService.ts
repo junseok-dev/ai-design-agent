@@ -66,10 +66,9 @@ export async function publishDocument(doc: SavedDocument, userId: string): Promi
         name: doc.name,
         design: doc.design,
         is_public: true,
-          created_at: new Date(doc.createdAt).toISOString(),
-          updated_at: new Date().toISOString(),
-        })
-      ),
+        created_at: new Date(doc.createdAt).toISOString(),
+        updated_at: new Date().toISOString(),
+      })),
       12000,
       'Supabase share save'
     )

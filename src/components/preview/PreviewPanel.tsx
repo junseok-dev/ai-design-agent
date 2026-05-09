@@ -1,11 +1,12 @@
 import { useMemo, useRef, useState } from 'react'
 import { useReactToPrint } from 'react-to-print'
-import { useDesignStore } from '../../store/useDesignStore'
 import { useAuthStore } from '../../store/useAuthStore'
+import { useDesignStore } from '../../store/useDesignStore'
 import { publishDocument } from '../../services/documentService'
-import { DesignRenderer } from '../renderer/DesignRenderer'
+import { CodePanel } from '../editor/CodePanel'
 import { SectionEditorPanel } from '../editor/SectionEditorPanel'
 import { ThemeEditorPanel } from '../editor/ThemeEditorPanel'
+import { DesignRenderer } from '../renderer/DesignRenderer'
 import { TemplateGallery } from '../templates/TemplateGallery'
 import type { DesignJSON, DesignSection, HeroProps, SavedDocument, SectionProps } from '../../types/design'
 import { ADDABLE_SECTION_TYPES, SECTION_TYPE_LABELS, createDefaultSection, type AddableSectionType } from './sectionDefaults'
@@ -34,15 +35,16 @@ export function PreviewPanel() {
   const [selectedSectionId, setSelectedSectionId] = useState<string | null>(null)
   const [showTemplates, setShowTemplates] = useState(false)
   const [showThemeEditor, setShowThemeEditor] = useState(false)
+  const [showCodePanel, setShowCodePanel] = useState(false)
   const [showAddSectionMenu, setShowAddSectionMenu] = useState(false)
   const [previewMode, setPreviewMode] = useState<PreviewMode>('a4')
   const [shareStatus, setShareStatus] = useState<'idle' | 'saving' | 'copied' | 'error'>('idle')
   const [shareMessage, setShareMessage] = useState('')
 
-  const selectedSection = design?.page.sections.find(s => s.id === selectedSectionId) ?? null
+  const selectedSection = design?.page.sections.find(section => section.id === selectedSectionId) ?? null
   const activeDocument = documents.find(doc => doc.id === activeDocumentId) ?? null
-  const hasPhoto = design?.page.sections.some(s => s.type === 'hero' && (s.props as HeroProps).avatarUrl)
-  const hasHero = design?.page.sections.some(s => s.type === 'hero')
+  const hasPhoto = design?.page.sections.some(section => section.type === 'hero' && (section.props as HeroProps).avatarUrl)
+  const hasHero = design?.page.sections.some(section => section.type === 'hero')
 
   const previewDesign = useMemo(() => {
     if (!design || previewMode === 'a4') return design
@@ -62,26 +64,27 @@ export function PreviewPanel() {
 
   function closeSidePanels() {
     setShowThemeEditor(false)
+    setShowCodePanel(false)
     setSelectedSectionId(null)
     setShowAddSectionMenu(false)
   }
 
-  function handlePhotoUpload(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0]
+  function handlePhotoUpload(event: React.ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0]
     if (!file || !design) return
 
     const reader = new FileReader()
-    reader.onload = (event) => {
-      const base64 = event.target?.result as string
+    reader.onload = readerEvent => {
+      const avatarUrl = readerEvent.target?.result as string
       const sections = design.page.sections.map(section =>
         section.type === 'hero'
-          ? { ...section, props: { ...(section.props as HeroProps), avatarUrl: base64 } }
+          ? { ...section, props: { ...(section.props as HeroProps), avatarUrl } }
           : section
       )
       setDesign({ ...design, page: { ...design.page, sections } })
     }
     reader.readAsDataURL(file)
-    e.target.value = ''
+    event.target.value = ''
   }
 
   function handlePhotoRemove() {
@@ -109,6 +112,15 @@ export function PreviewPanel() {
     setDesign({ ...design, page: { ...design.page, sections } })
   }
 
+  function handleSectionStyleUpdate(style: DesignSection['style']) {
+    if (!design || !selectedSectionId) return
+
+    const sections = design.page.sections.map(section =>
+      section.id === selectedSectionId ? { ...section, style } : section
+    )
+    setDesign({ ...design, page: { ...design.page, sections } })
+  }
+
   function handleThemeUpdate(theme: DesignJSON['page']['theme']) {
     if (!design) return
     setDesign({ ...design, page: { ...design.page, theme } })
@@ -129,6 +141,7 @@ export function PreviewPanel() {
     setDesign({ ...design, page: { ...design.page, sections: [...design.page.sections, section] } })
     setSelectedSectionId(section.id)
     setShowThemeEditor(false)
+    setShowCodePanel(false)
     setShowAddSectionMenu(false)
   }
 
@@ -149,6 +162,7 @@ export function PreviewPanel() {
 
     setShareStatus('saving')
     setShareMessage('')
+
     const doc: SavedDocument = {
       id: activeDocumentId ?? crypto.randomUUID(),
       name: activeDocument?.name ?? 'Shared design',
@@ -161,8 +175,6 @@ export function PreviewPanel() {
     if (!result.ok) {
       setShareStatus('error')
       setShareMessage(`공유 저장 실패: ${result.error ?? 'Supabase 마이그레이션과 RLS 정책을 확인해 주세요.'}`)
-      setShareMessage('공유 저장에 실패했습니다. Supabase 마이그레이션과 RLS 정책을 확인해 주세요.')
-      setShareMessage(`공유 저장 실패: ${result.error ?? 'Supabase 마이그레이션과 RLS 정책을 확인해 주세요.'}`)
       return
     }
 
@@ -172,7 +184,7 @@ export function PreviewPanel() {
       setShareStatus('copied')
       setShareMessage('공유 링크를 클립보드에 복사했습니다.')
     } catch {
-      window.prompt('Share URL', url)
+      window.prompt('공유 링크', url)
       setShareStatus('copied')
       setShareMessage('공유 링크를 만들었습니다.')
     }
@@ -194,7 +206,7 @@ export function PreviewPanel() {
     <div className="flex flex-col h-full bg-gray-100 relative">
       <div className="flex items-center justify-between px-4 py-2.5 bg-white border-b border-gray-200 flex-shrink-0">
         <div className="flex items-center gap-2">
-          <span className="text-sm font-semibold text-gray-700">Preview</span>
+          <span className="text-sm font-semibold text-gray-700">미리보기</span>
           {design && (
             <span className="text-xs px-2 py-0.5 bg-blue-100 text-blue-700 rounded-full font-medium">
               {design.page.type}
@@ -203,28 +215,34 @@ export function PreviewPanel() {
         </div>
 
         <div className="flex items-center gap-1.5">
-          <button
-            onClick={() => {
-              setShowTemplates(true)
-              closeSidePanels()
-            }}
-            className="flex items-center gap-1.5 px-2.5 py-1.5 text-sm text-gray-600 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
-          >
-            Templates
-          </button>
+          <ToolbarButton onClick={() => { setShowTemplates(true); closeSidePanels() }}>
+            템플릿
+          </ToolbarButton>
 
-          <button
+          <ToolbarButton
+            disabled={!design}
             onClick={() => {
               setShowThemeEditor(value => !value)
+              setShowCodePanel(false)
               setSelectedSectionId(null)
               setShowAddSectionMenu(false)
             }}
-            disabled={!design}
-            className="flex items-center gap-1.5 px-2.5 py-1.5 text-sm text-gray-600 border border-gray-200 rounded-lg hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
           >
             <span className="w-3.5 h-3.5 rounded-full border border-gray-200" style={{ backgroundColor: design?.page.theme.primaryColor ?? '#2563EB' }} />
-            Theme
-          </button>
+            테마
+          </ToolbarButton>
+
+          <ToolbarButton
+            disabled={!design}
+            onClick={() => {
+              setShowCodePanel(value => !value)
+              setShowThemeEditor(false)
+              setSelectedSectionId(null)
+              setShowAddSectionMenu(false)
+            }}
+          >
+            코드
+          </ToolbarButton>
 
           <div className="flex rounded-lg border border-gray-200 bg-white p-0.5">
             {(['a4', 'web'] as const).map(mode => (
@@ -243,41 +261,40 @@ export function PreviewPanel() {
 
           <div className="w-px h-5 bg-gray-200" />
 
-          <button onClick={undo} disabled={!canUndo()} title="이전 (Ctrl+Z)" className="w-8 h-8 rounded-lg flex items-center justify-center text-gray-500 hover:bg-gray-100 disabled:opacity-30 disabled:cursor-not-allowed transition-colors">
+          <button onClick={undo} disabled={!canUndo()} title="이전 (Ctrl+Z)" className="px-2 h-8 rounded-lg flex items-center justify-center text-sm text-gray-500 hover:bg-gray-100 disabled:opacity-30 disabled:cursor-not-allowed transition-colors">
             이전
           </button>
-          <button onClick={redo} disabled={!canRedo()} title="다음 (Ctrl+Y)" className="w-8 h-8 rounded-lg flex items-center justify-center text-gray-500 hover:bg-gray-100 disabled:opacity-30 disabled:cursor-not-allowed transition-colors">
+          <button onClick={redo} disabled={!canRedo()} title="다음 (Ctrl+Y)" className="px-2 h-8 rounded-lg flex items-center justify-center text-sm text-gray-500 hover:bg-gray-100 disabled:opacity-30 disabled:cursor-not-allowed transition-colors">
             다음
           </button>
 
           {hasHero && (
             <>
               <input ref={fileInputRef} type="file" accept="image/*" onChange={handlePhotoUpload} className="hidden" />
-              <button onClick={() => fileInputRef.current?.click()} className="flex items-center gap-1.5 px-2.5 py-1.5 text-sm text-gray-600 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
-                {hasPhoto ? 'Change photo' : 'Add photo'}
-              </button>
+              <ToolbarButton onClick={() => fileInputRef.current?.click()}>
+                {hasPhoto ? '사진 변경' : '사진 추가'}
+              </ToolbarButton>
               {hasPhoto && (
-                <button onClick={handlePhotoRemove} title="Remove photo" className="w-8 h-8 rounded-lg flex items-center justify-center text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors">
+                <button onClick={handlePhotoRemove} title="사진 삭제" className="w-8 h-8 rounded-lg flex items-center justify-center text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors">
                   X
                 </button>
               )}
             </>
           )}
 
-          <button onClick={handleShare} disabled={!design || shareStatus === 'saving'} className="flex items-center gap-1.5 px-2.5 py-1.5 text-sm text-gray-600 border border-gray-200 rounded-lg hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors">
-            {shareStatus === 'saving' ? 'Sharing...' : shareStatus === 'copied' ? 'Copied' : shareStatus === 'error' ? 'Share failed' : 'Share'}
-          </button>
+          <ToolbarButton onClick={handleShare} disabled={!design || shareStatus === 'saving'}>
+            {shareStatus === 'saving' ? '공유 중...' : shareStatus === 'copied' ? '복사됨' : shareStatus === 'error' ? '공유 실패' : '공유'}
+          </ToolbarButton>
 
           <button onClick={() => handlePrint()} disabled={!design} className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors">
             PDF
           </button>
         </div>
       </div>
+
       {shareMessage && (
         <div className={`px-4 py-2 text-xs border-b flex-shrink-0 ${
-          shareStatus === 'error'
-            ? 'bg-red-50 text-red-700 border-red-100'
-            : 'bg-green-50 text-green-700 border-green-100'
+          shareStatus === 'error' ? 'bg-red-50 text-red-700 border-red-100' : 'bg-green-50 text-green-700 border-green-100'
         }`}>
           {shareMessage}
         </div>
@@ -293,9 +310,10 @@ export function PreviewPanel() {
                   design={previewDesign}
                   editable
                   onReorder={handleReorder}
-                  onSectionClick={(id) => {
+                  onSectionClick={id => {
                     setSelectedSectionId(id)
                     setShowThemeEditor(false)
+                    setShowCodePanel(false)
                     setShowAddSectionMenu(false)
                   }}
                 />
@@ -307,12 +325,13 @@ export function PreviewPanel() {
                 onClick={() => {
                   setShowAddSectionMenu(value => !value)
                   setShowThemeEditor(false)
+                  setShowCodePanel(false)
                   setSelectedSectionId(null)
                 }}
                 className="flex items-center gap-2 px-3.5 py-2 bg-white text-sm font-medium text-gray-700 border border-gray-200 rounded-lg shadow-sm hover:bg-gray-50 transition-colors"
               >
                 <span className="text-lg leading-none text-blue-600">+</span>
-                Add section
+                섹션 추가
               </button>
               {showAddSectionMenu && (
                 <div className="absolute top-11 w-44 rounded-lg border border-gray-200 bg-white shadow-lg p-1 z-20">
@@ -334,10 +353,10 @@ export function PreviewPanel() {
             <div className="w-16 h-16 rounded-2xl bg-blue-100 flex items-center justify-center mb-4 text-blue-600 font-bold">
               L
             </div>
-            <p className="text-gray-500 font-medium mb-1">No design yet</p>
-            <p className="text-gray-400 text-sm mb-4">Start with AI chat or choose a template.</p>
+            <p className="text-gray-500 font-medium mb-1">아직 디자인이 없습니다.</p>
+            <p className="text-gray-400 text-sm mb-4">AI 채팅으로 만들거나 템플릿으로 시작하세요.</p>
             <button onClick={() => setShowTemplates(true)} className="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-xl hover:bg-blue-700 transition-colors">
-              Choose template
+              템플릿 선택
             </button>
           </div>
         )}
@@ -347,6 +366,7 @@ export function PreviewPanel() {
         <SectionEditorPanel
           section={selectedSection}
           onUpdate={handleSectionUpdate}
+          onStyleUpdate={handleSectionStyleUpdate}
           onDelete={handleSectionDelete}
           onClose={() => setSelectedSectionId(null)}
         />
@@ -360,6 +380,14 @@ export function PreviewPanel() {
         />
       )}
 
+      {design && showCodePanel && (
+        <CodePanel
+          design={design}
+          onApply={setDesign}
+          onClose={() => setShowCodePanel(false)}
+        />
+      )}
+
       {showTemplates && (
         <TemplateGallery
           onSelect={handleTemplateSelect}
@@ -367,5 +395,25 @@ export function PreviewPanel() {
         />
       )}
     </div>
+  )
+}
+
+function ToolbarButton({
+  children,
+  disabled,
+  onClick,
+}: {
+  children: React.ReactNode
+  disabled?: boolean
+  onClick: () => void
+}) {
+  return (
+    <button
+      onClick={onClick}
+      disabled={disabled}
+      className="flex items-center gap-1.5 px-2.5 py-1.5 text-sm text-gray-600 border border-gray-200 rounded-lg hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+    >
+      {children}
+    </button>
   )
 }
